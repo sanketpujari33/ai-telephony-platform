@@ -1,0 +1,720 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI — User Mobile App API (Android & iOS)",
+    "version": "1.0.0",
+    "description": "Clean Architecture REST and WebRTC API specifications for the Flutter mobile application."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (:8080)"
+    },
+    {
+      "url": "https://api.nexora.ai",
+      "description": "Production Gateway"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Universal Bootstrap",
+      "description": "App launch configuration and STUN/TURN ICE credentials"
+    },
+    {
+      "name": "Phone OTP Authentication",
+      "description": "Passwordless phone number verification and JWT token management"
+    },
+    {
+      "name": "Dual-SIM Forwarding",
+      "description": "Carrier profile detection and dynamic MMI shortcode activation"
+    },
+    {
+      "name": "Green Card Live Screening",
+      "description": "Real-time interim diarized transcript streaming and smart actions"
+    },
+    {
+      "name": "In-Call Whisper Guidance",
+      "description": "1-Tap supervisory whisper prompt injection (<18ms)"
+    },
+    {
+      "name": "1-Tap Live Takeover Barge-In",
+      "description": "Immediate human mic takeover (<15ms mutex lock)"
+    },
+    {
+      "name": "CRM Contacts & Whitelist",
+      "description": "Device address book sync and VIP bypass whitelisting"
+    }
+  ],
+  "paths": {
+    "/api/v1/bootstrap": {
+      "get": {
+        "tags": [
+          "Universal Bootstrap"
+        ],
+        "summary": "Universal mobile bootstrap handshake",
+        "responses": {
+          "200": {
+            "description": "Returns STUN/TURN, MMI profiles, feature flags"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/otp/send": {
+      "post": {
+        "tags": [
+          "Phone OTP Authentication"
+        ],
+        "summary": "Send Phone OTP SMS to mobile device",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "example": "+919820188412"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP SMS sent successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/otp/verify": {
+      "post": {
+        "tags": [
+          "Phone OTP Authentication"
+        ],
+        "summary": "Verify Phone OTP code and obtain session JWTs",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session tokens returned"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Phone OTP Authentication"
+        ],
+        "summary": "Refresh session tokens",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New JWT access token returned"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers": {
+      "get": {
+        "tags": [
+          "Dual-SIM Forwarding"
+        ],
+        "summary": "List available virtual forwarding DIDs",
+        "responses": {
+          "200": {
+            "description": "Virtual numbers list"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assign": {
+      "post": {
+        "tags": [
+          "Dual-SIM Forwarding"
+        ],
+        "summary": "Assign separated virtual DID for SIM 0 or SIM 1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDIDRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dedicated DID allocated with activation dial string"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/release": {
+      "post": {
+        "tags": [
+          "Dual-SIM Forwarding"
+        ],
+        "summary": "Release forwarding DID",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "numberId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DID released"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assigned": {
+      "get": {
+        "tags": [
+          "Dual-SIM Forwarding"
+        ],
+        "summary": "List assigned DIDs for device SIM slots",
+        "responses": {
+          "200": {
+            "description": "Assigned numbers"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/sim-slots/detect": {
+      "post": {
+        "tags": [
+          "Dual-SIM Forwarding"
+        ],
+        "summary": "Detect carrier profile (Jio, Airtel, Vi, BSNL, US) and format MMI shortcodes",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mccMnc": {
+                    "type": "string"
+                  },
+                  "simSlot": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Carrier MMI profile"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/dispatch": {
+      "post": {
+        "tags": [
+          "Green Card Live Screening"
+        ],
+        "summary": "Place outbound call or accept incoming screened call",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchCallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Call queued"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/screening": {
+      "get": {
+        "tags": [
+          "Green Card Live Screening"
+        ],
+        "summary": "Fetch live call screening state and interim transcript",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live screening session"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/route-voicemail": {
+      "post": {
+        "tags": [
+          "Green Card Live Screening"
+        ],
+        "summary": "Send caller directly to smart voicemail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Routed to voicemail"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/whisper": {
+      "post": {
+        "tags": [
+          "In-Call Whisper Guidance"
+        ],
+        "summary": "Inject in-call supervisory whisper prompt (<18ms queue latency)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InjectWhisperRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Whisper prompt delivered"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/takeover": {
+      "post": {
+        "tags": [
+          "1-Tap Live Takeover Barge-In"
+        ],
+        "summary": "1-tap live human mic takeover (<15ms lock)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Takeover locked, AI muted, WebRTC mic bridged"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts": {
+      "get": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "List synced device contacts with search",
+        "responses": {
+          "200": {
+            "description": "Contacts list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "Create or sync contact",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "isVip": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contact created"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/vip": {
+      "get": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "List VIP whitelist contacts for screening bypass",
+        "responses": {
+          "200": {
+            "description": "VIP contacts list"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/{id}": {
+      "get": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "Get single contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact details"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "Update contact details or VIP status",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CRM Contacts & Whitelist"
+        ],
+        "summary": "Delete contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact deleted"
+          }
+        }
+      }
+    }
+  }
+}

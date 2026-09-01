@@ -1,0 +1,301 @@
+openapi: 3.0.3
+info:
+  title: AI Telephony Platform API
+  description: Comprehensive A-to-Z REST API documentation for the AI Telephony Platform, covering all API Gateway endpoints, real-time call control, campaigns, provisioning, and webhooks.
+  version: 1.0.0
+servers:
+  - url: https://api.telephony.example.com
+    description: Production API Gateway
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Enter your JWT token provided by the provisioning endpoint.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health Check
+      operationId: checkHealth
+      security: []
+      responses:
+        '200':
+          description: OK
+
+  /metrics:
+    get:
+      summary: Prometheus Metrics
+      operationId: getPrometheusMetrics
+      security: []
+      responses:
+        '200':
+          description: Raw prometheus metrics payload
+
+  /api/v1/calls:
+    get:
+      summary: List Active Calls
+      operationId: listCalls
+      description: Returns a paginated list of all active calls on the platform. Requires 'operator' role.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: A list of active calls.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Call'
+
+    post:
+      summary: Initiate an Outbound Call
+      operationId: initiateCall
+      description: Dispatches an outbound SIP call to the requested destination and connects it to the AI orchestrator. Requires 'operator' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [destination, initial_prompt]
+              properties:
+                destination:
+                  type: string
+                  example: "+15551234567"
+                initial_prompt:
+                  type: string
+                  example: "You are a customer support agent. Introduce yourself and ask how you can help."
+                tenant_id:
+                  type: string
+                  example: "tenant-123"
+      responses:
+        '201':
+          description: Call initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Call'
+
+  /api/v1/calls/control:
+    post:
+      summary: Call Control Operations
+      operationId: controlCall
+      description: Allows operators to forcefully mute, hangup, or inject prompts into an active call. Requires 'operator' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [call_id, action]
+              properties:
+                call_id:
+                  type: string
+                action:
+                  type: string
+                  enum: [hangup, mute, inject_prompt, blind_transfer, warm_transfer]
+                action_payload:
+                  type: object
+                  description: Additional parameters for the action (e.g. transfer destination, injected prompt text).
+      responses:
+        '200':
+          description: Action accepted
+
+  /api/v1/campaigns:
+    get:
+      summary: List Campaigns
+      operationId: listCampaigns
+      description: List all campaigns and their status. Requires 'admin' role.
+      responses:
+        '200':
+          description: List of campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Campaign'
+    post:
+      summary: Create or Start a Campaign
+      operationId: startCampaign
+      description: Initiates a high-throughput outbound dialing campaign. Requires 'admin' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, contacts]
+              properties:
+                name:
+                  type: string
+                target_abandonment_rate:
+                  type: integer
+                  description: Max percentage of abandoned calls (e.g., 3 for 3%)
+                  default: 3
+                contacts:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      phone_number:
+                        type: string
+                      timezone:
+                        type: string
+      responses:
+        '201':
+          description: Campaign created and dialing initiated.
+
+  /api/v1/webhooks:
+    post:
+      summary: Configure Tenant Webhooks
+      operationId: configureWebhooks
+      description: Register webhook URLs to receive real-time events (call.started, call.ended, transcript.final). Requires 'admin' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_types, url]
+              properties:
+                event_types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [call.started, call.ended, transcript.final, transfer.initiated]
+                url:
+                  type: string
+                  format: uri
+                secret_key:
+                  type: string
+                  description: HMAC signing key to verify payload authenticity.
+      responses:
+        '200':
+          description: Webhook configured
+
+  /api/v1/provisioning:
+    post:
+      summary: Provision AI Providers
+      operationId: provisionProviders
+      description: Update API keys and models for STT, LLM, and TTS providers dynamically. Requires 'admin' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                openai_api_key:
+                  type: string
+                deepgram_api_key:
+                  type: string
+                elevenlabs_api_key:
+                  type: string
+      responses:
+        '200':
+          description: Provisioning settings updated and applied across the cluster.
+
+  /api/v1/tenants:
+    get:
+      summary: List Tenants
+      operationId: listTenants
+      description: Requires 'admin' role.
+      responses:
+        '200':
+          description: List of tenants
+
+    post:
+      summary: Create a new Tenant
+      operationId: createTenant
+      description: Onboards a new tenant and generates their administrative JWT token. Requires 'admin' role.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                plan:
+                  type: string
+                  enum: [standard, enterprise]
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                  admin_token:
+                    type: string
+
+  /api/v1/metrics/stream:
+    get:
+      summary: Real-Time Metrics WebSocket
+      operationId: metricsStream
+      description: Connect via `wss://` to receive real-time streams of active calls, MOS scores, and provider latency. Requires 'admin' role.
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+
+components:
+  schemas:
+    Call:
+      type: object
+      properties:
+        id:
+          type: string
+        tenant_id:
+          type: string
+        status:
+          type: string
+          enum: [ringing, connected, transferring, completed, failed]
+        destination:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        duration_seconds:
+          type: integer
+    
+    Campaign:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [running, paused, completed]
+        total_contacts:
+          type: integer
+        calls_made:
+          type: integer
+        live_connect_rate:
+          type: number
+          format: float

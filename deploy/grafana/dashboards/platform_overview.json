@@ -1,0 +1,49 @@
+{
+  "title": "AI Telephony Platform Overview",
+  "panels": [
+    {
+      "title": "Active Calls",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(ai_telephony_concurrent_calls)",
+          "legendFormat": "Total Active Calls"
+        }
+      ]
+    },
+    {
+      "title": "LLM Latency (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ai_telephony_llm_latency_ms_bucket[5m])) by (le, provider))",
+          "legendFormat": "{{provider}} p95 Latency (ms)"
+        }
+      ]
+    },
+    {
+      "title": "Transfer Success vs Abandonment",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(ai_telephony_transfer_success_total[5m]))",
+          "legendFormat": "Successful Transfers"
+        },
+        {
+          "expr": "sum(rate(ai_telephony_transfer_abandon_total[5m]))",
+          "legendFormat": "Abandoned Transfers"
+        }
+      ]
+    },
+    {
+      "title": "Media Quality (MOS)",
+      "type": "gauge",
+      "targets": [
+        {
+          "expr": "avg(ai_telephony_media_mos)",
+          "legendFormat": "Average MOS Score"
+        }
+      ]
+    }
+  ]
+}

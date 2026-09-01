@@ -1,0 +1,14 @@
+apiVersion: v2
+name: orchestrator
+description: Conversation Orchestrator Service for AI Telephony Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - orchestrator
+  - conversation
+  - state-machine
+  - ai
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

@@ -1,0 +1,250 @@
+# Default values for api-gateway
+replicaCount: 3
+
+image:
+  repository: ai-telephony-platform/api-gateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9094"
+  prometheus.io/path: "/metrics"
+  sidecar.istio.io/inject: "true"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  ports:
+    http: 8080
+    grpc: 9094
+    metrics: 9094
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+  hosts:
+    - host: api.ai-telephony-platform.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: api-gateway-tls
+      hosts:
+        - api.ai-telephony-platform.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - api-gateway
+          topologyKey: kubernetes.io/hostname
+
+config:
+  platform:
+    api_gateway:
+      http:
+        listen: "0.0.0.0:8080"
+        read_timeout: 30
+        write_timeout: 30
+        idle_timeout: 120
+        max_header_bytes: 1048576
+      grpc:
+        listen: "0.0.0.0:9094"
+        max_recv_msg_size: 4194304
+        max_send_msg_size: 4194304
+      auth:
+        enabled: true
+        jwt:
+          issuer: "https://auth.ai-telephony-platform.example.com"
+          audience: "api-gateway"
+          jwks_uri: "https://auth.ai-telephony-platform.example.com/.well-known/jwks.json"
+        api_key:
+          enabled: true
+          header_name: "X-API-Key"
+      rate_limit:
+        enabled: true
+        requests_per_second: 1000
+        burst: 2000
+        window: 60
+      cors:
+        enabled: true
+        allowed_origins:
+          - "https://app.ai-telephony-platform.example.com"
+          - "https://dashboard.ai-telephony-platform.example.com"
+        allowed_methods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "PATCH"
+          - "DELETE"
+          - "OPTIONS"
+        allowed_headers:
+          - "Authorization"
+          - "Content-Type"
+          - "X-API-Key"
+          - "X-Request-ID"
+        allow_credentials: true
+        max_age: 86400
+      upstream:
+        orchestrator: "orchestrator:9092"
+        call_router: "call-router:9090"
+        media_proxy: "media-proxy:9091"
+        transfer_manager: "transfer-manager:9093"
+        campaign_manager: "campaign-manager:9093"
+      health:
+        enabled: true
+        path: "/health"
+        port: 8080
+
+secrets: {}
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 9094
+    - from:
+        - podSelector:
+            matchLabels:
+              app: sip-ingress
+      ports:
+        - protocol: TCP
+          port: 9094
+
+istio:
+  sidecar:
+    enabled: true
+  destinationRule:
+    enabled: true
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 1000
+        http:
+          h2UpgradePolicy: UPGRADE
+          http1MaxPendingRequests: 1000
+          http2MaxRequests: 1000
+      loadBalancer:
+        simple: LEAST_REQUEST
+      outlierDetection:
+        consecutive5xxErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+  virtualService:
+    enabled: true
+    hosts:
+      - "api-gateway"
+    gateways:
+      - "mesh-gateway"

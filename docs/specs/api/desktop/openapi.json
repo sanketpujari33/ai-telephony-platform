@@ -1,0 +1,509 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI — Desktop 4-Line Softphone API",
+    "version": "1.0.0",
+    "description": "API specifications for the Desktop Flutter/Electron softphone client supporting 4 concurrent lines, live supervisory whisper, and 60fps audio waveform streaming."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (:8080)"
+    },
+    {
+      "url": "http://localhost:8091",
+      "description": "Call Lifecycle Service (:8091)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Multi-Line HUD",
+      "description": "Manage up to 4 concurrent active softphone lines"
+    },
+    {
+      "name": "Live Screening & Takeover",
+      "description": "Supervisory whisper, live barge-in, and warm transfer"
+    },
+    {
+      "name": "Waveform Streaming",
+      "description": "60fps real-time audio energy and WebRTC token generation"
+    },
+    {
+      "name": "Transcripts & Recording",
+      "description": "Instant call replay and diarized speaker utterance inspection"
+    }
+  ],
+  "paths": {
+    "/api/v1/calls/active": {
+      "get": {
+        "tags": [
+          "Multi-Line HUD"
+        ],
+        "summary": "List all active calls across HUD lines",
+        "responses": {
+          "200": {
+            "description": "Active calls list"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/dispatch": {
+      "post": {
+        "tags": [
+          "Multi-Line HUD"
+        ],
+        "summary": "Place outbound call on specific line",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchCallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Call placed"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}": {
+      "get": {
+        "tags": [
+          "Multi-Line HUD"
+        ],
+        "summary": "Get call state for line HUD widget",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call details"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Multi-Line HUD"
+        ],
+        "summary": "Hang up or terminate call on line",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call terminated"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/screening": {
+      "get": {
+        "tags": [
+          "Live Screening & Takeover"
+        ],
+        "summary": "Fetch live screening state and transcript",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live screening status"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/whisper": {
+      "post": {
+        "tags": [
+          "Live Screening & Takeover"
+        ],
+        "summary": "Inject supervisory whisper prompt (<18ms)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InjectWhisperRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Whisper injected"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/takeover": {
+      "post": {
+        "tags": [
+          "Live Screening & Takeover"
+        ],
+        "summary": "Acquire takeover lock and mute AI (<15ms lock)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Takeover completed"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/route-voicemail": {
+      "post": {
+        "tags": [
+          "Live Screening & Takeover"
+        ],
+        "summary": "Drop call into smart voicemail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Voicemail routed"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/{id}/token": {
+      "post": {
+        "tags": [
+          "Waveform Streaming"
+        ],
+        "summary": "Generate LiveKit WebRTC audio room token for softphone line",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roomName": {
+                    "type": "string"
+                  },
+                  "participantIdentity": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "WebRTC token returned"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/transcript": {
+      "get": {
+        "tags": [
+          "Transcripts & Recording"
+        ],
+        "summary": "Fetch real-time diarized transcript segments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diarized transcript"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/recording": {
+      "get": {
+        "tags": [
+          "Transcripts & Recording"
+        ],
+        "summary": "Retrieve presigned S3 URL for call audio playback",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio recording URL"
+          }
+        }
+      }
+    }
+  }
+}

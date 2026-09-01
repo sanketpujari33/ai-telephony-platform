@@ -1,0 +1,14 @@
+apiVersion: v2
+name: campaign-manager
+description: Campaign Manager Service for AI Telephony Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - campaign
+  - outbound
+  - dialer
+  - predictive
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

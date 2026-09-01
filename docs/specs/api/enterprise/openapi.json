@@ -1,0 +1,517 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI — Enterprise Governance & SSO API",
+    "version": "1.0.0",
+    "description": "API specifications for enterprise SSO (SAML 2.0 / Okta), SCIM 2.0 automated employee directory synchronization, and immutable SOC 2 compliance audit trails."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (:8080)"
+    },
+    {
+      "url": "http://localhost:8104",
+      "description": "Enterprise Microservice (:8104)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Organization Management",
+      "description": "Tenant provisioning, seat allocation, and org settings"
+    },
+    {
+      "name": "SAML 2.0 & Okta SSO",
+      "description": "Enterprise identity provider SAML 2.0 / OIDC configuration"
+    },
+    {
+      "name": "SCIM 2.0 User Sync",
+      "description": "Automated enterprise employee directory provisioning"
+    },
+    {
+      "name": "SOC 2 Audit Trail",
+      "description": "Immutable append-only security logs & compliance exports"
+    }
+  ],
+  "paths": {
+    "/api/v1/organizations": {
+      "post": {
+        "tags": [
+          "Organization Management"
+        ],
+        "summary": "Provision new enterprise organization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "seats": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{id}": {
+      "get": {
+        "tags": [
+          "Organization Management"
+        ],
+        "summary": "Get organization details & seat allocation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organization details"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Organization Management"
+        ],
+        "summary": "Update organization settings or seats",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Organization updated"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{id}/sso": {
+      "post": {
+        "tags": [
+          "SAML 2.0 & Okta SSO"
+        ],
+        "summary": "Configure SAML 2.0 / Okta SSO integration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idpMetadataUrl": {
+                    "type": "string"
+                  },
+                  "entityId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSO configured"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "SAML 2.0 & Okta SSO"
+        ],
+        "summary": "Get active SSO configuration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSO configuration"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SAML 2.0 & Okta SSO"
+        ],
+        "summary": "Disable SSO integration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSO disabled"
+          }
+        }
+      }
+    },
+    "/api/v1/scim/v2/Users": {
+      "get": {
+        "tags": [
+          "SCIM 2.0 User Sync"
+        ],
+        "summary": "SCIM 2.0 List enterprise users",
+        "responses": {
+          "200": {
+            "description": "SCIM user collection"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SCIM 2.0 User Sync"
+        ],
+        "summary": "SCIM 2.0 Provision enterprise employee",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userName": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User provisioned"
+          }
+        }
+      }
+    },
+    "/api/v1/scim/v2/Users/{id}": {
+      "put": {
+        "tags": [
+          "SCIM 2.0 User Sync"
+        ],
+        "summary": "SCIM 2.0 Update employee record",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SCIM 2.0 User Sync"
+        ],
+        "summary": "SCIM 2.0 Deprovision employee",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deprovisioned"
+          }
+        }
+      }
+    },
+    "/api/v1/audit/logs": {
+      "get": {
+        "tags": [
+          "SOC 2 Audit Trail"
+        ],
+        "summary": "Fetch immutable SOC 2 audit logs",
+        "responses": {
+          "200": {
+            "description": "Audit logs"
+          }
+        }
+      }
+    }
+  }
+}
