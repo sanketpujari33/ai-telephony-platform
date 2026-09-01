@@ -1,0 +1,38 @@
+groups:
+- name: ai_telephony_alerts
+  rules:
+  - alert: HighCallLatency
+    expr: histogram_quantile(0.95, sum(rate(ai_telephony_call_latency_seconds_bucket[5m])) by (le)) > 2.5
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High 95th percentile call latency"
+      description: "p95 Call latency is > 2.5s for the past 2 minutes."
+
+  - alert: STTCircuitBreakerOpen
+    expr: increase(ai_telephony_stt_circuit_breaker_open_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "STT Circuit Breaker has opened"
+      description: "One or more STT providers have failed and triggered circuit breakers in the last 5 minutes."
+
+  - alert: HighTransferAbandonRate
+    expr: sum(rate(ai_telephony_transfer_abandon_total[5m])) / (sum(rate(ai_telephony_transfer_success_total[5m])) + sum(rate(ai_telephony_transfer_abandon_total[5m]))) > 0.15
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "High Transfer Abandonment Rate"
+      description: "> 15% of transfers are abandoning or timing out."
+
+  - alert: MediaQualityDegradation
+    expr: avg(ai_telephony_media_mos) < 3.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Media Quality (MOS) Degradation"
+      description: "Average MOS has dropped below 3.8, indicating poor audio quality across sessions."

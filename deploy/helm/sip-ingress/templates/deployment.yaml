@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sip-ingress.fullname" . }}
+  labels:
+    {{- include "sip-ingress.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "sip-ingress.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "sip-ingress.selectorLabels" . | nindent 8 }}
+        {{- if .Values.istio.sidecar.enabled }}
+        sidecar.istio.io/inject: "true"
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "sip-ingress.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: sip-udp
+              containerPort: {{ index .Values.service.ports "sip-udp" }}
+              protocol: UDP
+            - name: sip-tcp
+              containerPort: {{ index .Values.service.ports "sip-tcp" }}
+              protocol: TCP
+            - name: sip-tls
+              containerPort: {{ index .Values.service.ports "sip-tls" }}
+              protocol: TCP
+            - name: sip-ws
+              containerPort: {{ index .Values.service.ports "sip-ws" }}
+              protocol: TCP
+            - name: sip-wss
+              containerPort: {{ index .Values.service.ports "sip-wss" }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.service.ports.grpc }}
+              protocol: TCP
+
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ai-telephony-platform
+              readOnly: true
+            - name: secrets
+              mountPath: /etc/ai-telephony-platform/secrets
+              readOnly: true
+            - name: tls-certs
+              mountPath: /etc/kamailio/certs
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "sip-ingress.fullname" . }}-config
+        - name: secrets
+          secret:
+            secretName: {{ include "sip-ingress.fullname" . }}-secrets
+        - name: tls-certs
+          secret:
+            secretName: {{ include "sip-ingress.fullname" . }}-tls-certs
+            optional: true
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

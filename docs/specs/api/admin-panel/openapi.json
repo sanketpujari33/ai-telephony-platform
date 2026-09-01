@@ -1,0 +1,987 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI — Platform Admin Operations Center API",
+    "version": "1.0.0",
+    "description": "Specialized REST API endpoints powering the Next.js 14 Admin Panel (:3001), RBAC operations, Dynamic CMS, FAQs, Banners, Keywords, and Support Helpdesk."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (:8080)"
+    },
+    {
+      "url": "http://localhost:8101",
+      "description": "Direct Admin Service (:8101)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Admin Auth & RBAC",
+      "description": "Platform admin registration, login, and staff role permissions"
+    },
+    {
+      "name": "Dynamic CMS & Legal",
+      "description": "Manage dynamic Privacy Policies, Terms of Service, and Compliance markdown"
+    },
+    {
+      "name": "Platform FAQs",
+      "description": "Manage customer and carrier troubleshooting FAQs"
+    },
+    {
+      "name": "Promotional Banners",
+      "description": "Manage screen announcement banners and promotions"
+    },
+    {
+      "name": "Speech Compliance Keywords",
+      "description": "Real-time keyword monitoring and compliance alert rules"
+    },
+    {
+      "name": "Dead Call Analytics",
+      "description": "Carrier MMI failure telemetry and dropped call diagnostic reports"
+    },
+    {
+      "name": "Support Chat Helpdesk",
+      "description": "Tier-1 AI Support Bot session handling and live human escalation"
+    }
+  ],
+  "paths": {
+    "/api/v1/auth/admin/register": {
+      "post": {
+        "tags": [
+          "Admin Auth & RBAC"
+        ],
+        "summary": "Register new platform operator / admin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "super_admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin registered successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/admin/login": {
+      "post": {
+        "tags": [
+          "Admin Auth & RBAC"
+        ],
+        "summary": "Admin login with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin JWT tokens returned"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Admin Auth & RBAC"
+        ],
+        "summary": "List tenant users across all organizations",
+        "responses": {
+          "200": {
+            "description": "Paginated user list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin Auth & RBAC"
+        ],
+        "summary": "Create platform user with role assignment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{id}": {
+      "delete": {
+        "tags": [
+          "Admin Auth & RBAC"
+        ],
+        "summary": "Delete or deactivate platform user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/content": {
+      "get": {
+        "tags": [
+          "Dynamic CMS & Legal"
+        ],
+        "summary": "List all dynamic legal and compliance documents",
+        "responses": {
+          "200": {
+            "description": "List of documents"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Dynamic CMS & Legal"
+        ],
+        "summary": "Create or publish legal policy document (Privacy Policy, Terms)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slug": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "rawMarkdown": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document published"
+          }
+        }
+      }
+    },
+    "/api/v1/content/{slug}": {
+      "get": {
+        "tags": [
+          "Dynamic CMS & Legal"
+        ],
+        "summary": "Fetch dynamic document by slug",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "privacy-policy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document markdown content"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/content/{id}": {
+      "put": {
+        "tags": [
+          "Dynamic CMS & Legal"
+        ],
+        "summary": "Update legal policy document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Dynamic CMS & Legal"
+        ],
+        "summary": "Delete legal document",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/faqs": {
+      "get": {
+        "tags": [
+          "Platform FAQs"
+        ],
+        "summary": "List all platform FAQs",
+        "responses": {
+          "200": {
+            "description": "FAQs list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Platform FAQs"
+        ],
+        "summary": "Create new platform FAQ",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "question": {
+                    "type": "string"
+                  },
+                  "answer": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "FAQ created"
+          }
+        }
+      }
+    },
+    "/api/v1/content/faqs": {
+      "get": {
+        "tags": [
+          "Platform FAQs"
+        ],
+        "summary": "Public customer-facing FAQs list",
+        "responses": {
+          "200": {
+            "description": "Published FAQs"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/faqs/{id}": {
+      "put": {
+        "tags": [
+          "Platform FAQs"
+        ],
+        "summary": "Update platform FAQ",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "FAQ updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Platform FAQs"
+        ],
+        "summary": "Delete platform FAQ",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "FAQ deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banners": {
+      "get": {
+        "tags": [
+          "Promotional Banners"
+        ],
+        "summary": "List active promotional and announcement banners",
+        "responses": {
+          "200": {
+            "description": "Banners list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Promotional Banners"
+        ],
+        "summary": "Create broadcast banner",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "screenLocation": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Banner created"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banners/{id}": {
+      "patch": {
+        "tags": [
+          "Promotional Banners"
+        ],
+        "summary": "Toggle banner active status or edit copy",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Banner updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Promotional Banners"
+        ],
+        "summary": "Delete announcement banner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/keywords": {
+      "get": {
+        "tags": [
+          "Speech Compliance Keywords"
+        ],
+        "summary": "List monitored speech keywords and phrases",
+        "responses": {
+          "200": {
+            "description": "Keywords list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Speech Compliance Keywords"
+        ],
+        "summary": "Add monitored speech keyword with severity action",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyword": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Keyword added"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/keywords/{id}": {
+      "patch": {
+        "tags": [
+          "Speech Compliance Keywords"
+        ],
+        "summary": "Update keyword severity / alert action",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Keyword updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Speech Compliance Keywords"
+        ],
+        "summary": "Remove monitored keyword",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Keyword removed"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/dead-reports": {
+      "get": {
+        "tags": [
+          "Dead Call Analytics"
+        ],
+        "summary": "List carrier MMI failure and dead call drop reports",
+        "responses": {
+          "200": {
+            "description": "Dead call reports list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Dead Call Analytics"
+        ],
+        "summary": "Submit diagnostic dead call telemetry report",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "callerNumber": {
+                    "type": "string"
+                  },
+                  "carrierName": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report logged"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/dead-reports/{id}": {
+      "patch": {
+        "tags": [
+          "Dead Call Analytics"
+        ],
+        "summary": "Dismiss or resolve dead call report",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report updated"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support/chats": {
+      "get": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "List escalated support chats requiring live staff assistance",
+        "responses": {
+          "200": {
+            "description": "Escalated chats list"
+          }
+        }
+      }
+    },
+    "/api/v1/support/chat/{id}": {
+      "get": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "Get complete support chat message history",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat history"
+          }
+        }
+      }
+    },
+    "/api/v1/support/chat/{id}/messages": {
+      "post": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "Send staff reply in support chat",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support/chats/{id}/resolve": {
+      "patch": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "Mark support ticket/chat as resolved",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat resolved"
+          }
+        }
+      }
+    }
+  }
+}

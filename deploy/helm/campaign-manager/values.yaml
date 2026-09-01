@@ -1,0 +1,227 @@
+# Default values for campaign-manager
+replicaCount: 2
+
+image:
+  repository: ai-telephony-platform/campaign-manager
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9093"
+  prometheus.io/path: "/metrics"
+  sidecar.istio.io/inject: "true"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  ports:
+    grpc: 9093
+    metrics: 9093
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 2
+          periodSeconds: 15
+      selectPolicy: Max
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - campaign-manager
+          topologyKey: kubernetes.io/hostname
+
+config:
+  platform:
+    campaign:
+      manager:
+        grpc:
+          listen: "0.0.0.0:9093"
+          max_recv_msg_size: 4194304
+          max_send_msg_size: 4194304
+        contact_loader:
+          batch_size: 1000
+          concurrency: 10
+          timeout: 300
+        compliance:
+          dnc_check_enabled: true
+          consent_check_enabled: true
+          cache_ttl: 3600
+          cache_size: 100000
+        calling_window:
+          enabled: true
+          default_start: "08:00"
+          default_end: "21:00"
+          timezone_db: "tzdata"
+        scheduling:
+          enabled: true
+          rrule_support: true
+          check_interval: 60
+      predictive_dialer:
+        enabled: true
+        erlang_c:
+          target_utilization: 0.85
+          safety_margin: 0.03
+          max_abandon_rate: 0.03
+        metrics:
+          enabled: true
+          interval: 10
+          emit_to_prometheus: true
+        amd:
+          enabled: true
+          human_threshold: 0.5
+          voicemail_threshold: 0.7
+          silence_duration: 1.5
+          beep_detection: true
+          speech_detection: true
+        retry:
+          max_attempts: 3
+          base_delay: 300
+          max_delay: 3600
+          exponential_backoff: true
+
+secrets: {}
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 9093
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 9093
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 9093
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: 9093
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9093
+
+istio:
+  sidecar:
+    enabled: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  virtualService:
+    enabled: true
+    hosts:
+      - campaign-manager
+    gateways:
+      - istio-system/internal-gateway
+  destinationRule:
+    enabled: true
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 1000
+        http:
+          h2UpgradePolicy: UPGRADE
+          http1MaxPendingRequests: 1000
+          http2MaxRequests: 1000
+      loadBalancer:
+        simple: LEAST_REQUEST
+      outlierDetection:
+        consecutive5xxErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50

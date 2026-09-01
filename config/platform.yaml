@@ -1,0 +1,783 @@
+# AI Telephony Platform Configuration
+# All configuration sections for the platform
+
+# SIP Configuration
+sip:
+  # SIP Ingress (Kamailio) settings
+  ingress:
+    # Listen addresses for SIP traffic
+    listen:
+      udp: "0.0.0.0:5060"
+      tcp: "0.0.0.0:5060"
+      tls: "0.0.0.0:5061"
+      ws: "0.0.0.0:5062"
+      wss: "0.0.0.0:5063"
+    
+    # TLS Configuration
+    tls:
+      enabled: true
+      cert_file: "/etc/kamailio/certs/sip.crt"
+      key_file: "/etc/kamailio/certs/sip.key"
+      ca_file: "/etc/kamailio/certs/ca.crt"
+      verify_client: false
+    
+    # Kamailio worker settings
+    workers: 4
+    max_requests_per_worker: 10000
+    
+    # SIP trunk configuration
+    trunks:
+      - name: "primary"
+        host: "sip.example.com"
+        port: 5060
+        transport: "udp"
+        username: ""
+        password: ""
+        realm: ""
+        priority: 1
+        weight: 100
+      - name: "backup"
+        host: "sip-backup.example.com"
+        port: 5060
+        transport: "udp"
+        username: ""
+        password: ""
+        realm: ""
+        priority: 2
+        weight: 50
+    
+    # DNS SRV failover
+    dns_srv:
+      enabled: true
+      domain: "sip.example.com"
+      transport: "udp"
+    
+    # OPTIONS keepalive
+    keepalive:
+      enabled: true
+      interval: 30
+      timeout: 5
+      retry_count: 3
+    
+    # Rate limiting
+    rate_limit:
+      enabled: true
+      requests_per_second: 100
+      burst: 200
+
+  # Call Router settings
+  router:
+    # gRPC server for Call Router
+    grpc:
+      listen: "0.0.0.0:9090"
+      max_recv_msg_size: 4194304
+      max_send_msg_size: 4194304
+    
+    # Tenant lookup
+    tenant_lookup:
+      cache_ttl: 300
+      cache_size: 10000
+    
+    # Media port allocation
+    media_ports:
+      start: 10000
+      end: 20000
+      per_call: 4
+
+# Media Configuration
+media:
+  # Media Proxy settings
+  proxy:
+    # gRPC server for Media Proxy
+    grpc:
+      listen: "0.0.0.0:9091"
+      max_recv_msg_size: 16777216
+      max_send_msg_size: 16777216
+    
+    # MediaSoup worker settings
+    mediasoup:
+      num_workers: 4
+      worker_settings:
+        rtc_min_port: 40000
+        rtc_max_port: 49999
+        dtls_certificate_file: "/etc/mediasoup/certs/dtls.crt"
+        dtls_private_key_file: "/etc/mediasoup/certs/dtls.key"
+    
+    # RTP port range
+    rtp_port_range:
+      start: 10000
+      end: 20000
+    
+    # Codec settings
+    codecs:
+      - name: "opus"
+        payload_type: 111
+        clock_rate: 48000
+        channels: 2
+        parameters:
+          useinbandfec: 1
+          usedtx: 1
+      - name: "PCMU"
+        payload_type: 0
+        clock_rate: 8000
+        channels: 1
+      - name: "PCMA"
+        payload_type: 8
+        clock_rate: 8000
+        channels: 1
+      - name: "G722"
+        payload_type: 9
+        clock_rate: 16000
+        channels: 1
+    
+    # Jitter buffer settings
+    jitter_buffer:
+      enabled: true
+      min_delay: 20
+      max_delay: 200
+      target_delay: 60
+      adaptive: true
+    
+    # Packet loss concealment
+    plc:
+      enabled: true
+      algorithm: "default"
+    
+    # DTMF handling
+    dtmf:
+      rfc4733_enabled: true
+      inband_enabled: true
+      sip_info_enabled: true
+    
+    # Media quality metrics
+    quality_metrics:
+      enabled: true
+      interval: 5
+      emit_to_prometheus: true
+
+  # FFmpeg transcoder sidecar
+  transcoder:
+    enabled: true
+    image: "ffmpeg:latest"
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+
+# STT Configuration
+stt:
+  # Provider priority order (first is primary)
+  providers:
+    - name: "deepgram"
+      type: "deepgram"
+      priority: 1
+      enabled: true
+      config:
+        api_key: "${DEEPGRAM_API_KEY}"
+        model: "nova-2"
+        language: "en-US"
+        encoding: "linear16"
+        sample_rate: 16000
+        channels: 1
+        interim_results: true
+        endpointing: 500
+        punctuate: true
+        profanity_filter: false
+        diarize: false
+        keywords: []
+      connection_pool:
+        max_connections: 10
+        idle_timeout: 300
+      reconnection:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+    
+    - name: "assemblyai"
+      type: "assemblyai"
+      priority: 2
+      enabled: true
+      config:
+        api_key: "${ASSEMBLYAI_API_KEY}"
+        model: "universal-2"
+        language: "en"
+        sample_rate: 16000
+        encoding: "linear16"
+        interim_results: true
+        endpointing: 500
+        punctuate: true
+        profanity_filter: false
+        diarization: false
+        word_boost: []
+      connection_pool:
+        max_connections: 10
+        idle_timeout: 300
+      reconnection:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+    
+    - name: "whisper"
+      type: "whisper"
+      priority: 3
+      enabled: true
+      config:
+        model: "base"
+        language: "en"
+        host: "localhost"
+        port: 9000
+        sample_rate: 16000
+        encoding: "linear16"
+      connection_pool:
+        max_connections: 5
+        idle_timeout: 300
+      reconnection:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+
+  # Circuit breaker settings
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 3
+    timeout: 30
+    half_open_requests: 3
+    metrics_enabled: true
+
+  # Global STT settings
+  global:
+    interim_results: true
+    keyword_boosting: true
+    diarization: false
+    latency_tracking:
+      enabled: true
+      percentiles: [50, 95, 99]
+    logging:
+      level: "info"
+      format: "json"
+
+# LLM Configuration
+llm:
+  # Provider priority order
+  providers:
+    - name: "openai"
+      type: "openai"
+      priority: 1
+      enabled: true
+      config:
+        api_key: "${OPENAI_API_KEY}"
+        base_url: "https://api.openai.com/v1"
+        model: "gpt-4o"
+        max_tokens: 4096
+        temperature: 0.7
+        top_p: 1.0
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+        timeout: 30
+      token_counting:
+        enabled: true
+        model: "gpt-4o"
+      connection_pool:
+        max_connections: 20
+        idle_timeout: 300
+      retry:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+    
+    - name: "anthropic"
+      type: "anthropic"
+      priority: 2
+      enabled: true
+      config:
+        api_key: "${ANTHROPIC_API_KEY}"
+        base_url: "https://api.anthropic.com"
+        model: "claude-3-5-sonnet-20241022"
+        max_tokens: 4096
+        temperature: 0.7
+        top_p: 1.0
+        timeout: 30
+      token_counting:
+        enabled: true
+        model: "claude-3-5-sonnet-20241022"
+      connection_pool:
+        max_connections: 20
+        idle_timeout: 300
+      retry:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+
+  # Context management
+  context:
+    sliding_window:
+      enabled: true
+      max_turns: 20
+      max_tokens: 8192
+    token_budget:
+      enabled: true
+      total_budget: 16384
+      system_reserved: 0.2
+      user_reserved: 0.8
+    summarization:
+      enabled: true
+      trigger_threshold: 0.7
+      model: "gpt-4o-mini"
+      max_summary_tokens: 1024
+      interval: 300
+
+  # Provider router
+  router:
+    enabled: true
+    strategy: "priority"
+    circuit_breaker:
+      enabled: true
+      failure_threshold: 3
+      timeout: 30
+    cost_tracking:
+      enabled: true
+      currency: "USD"
+    response_caching:
+      enabled: true
+      ttl: 3600
+      max_size: 1000
+    latency_metrics:
+      enabled: true
+      percentiles: [50, 95, 99]
+
+# TTS Configuration
+tts:
+  # Provider priority order
+  providers:
+    - name: "elevenlabs"
+      type: "elevenlabs"
+      priority: 1
+      enabled: true
+      config:
+        api_key: "${ELEVENLABS_API_KEY}"
+        base_url: "https://api.elevenlabs.io/v1"
+        model: "eleven_multilingual_v2"
+        voice_id: "21m00Tcm4TlvDq8ikWAM"
+        voice_settings:
+          stability: 0.5
+          similarity_boost: 0.75
+          style: 0.0
+          use_speaker_boost: true
+        output_format: "pcm_16000"
+        optimize_streaming_latency: 4
+      connection_pool:
+        max_connections: 10
+        idle_timeout: 300
+      retry:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+    
+    - name: "azure"
+      type: "azure"
+      priority: 2
+      enabled: true
+      config:
+        api_key: "${AZURE_TTS_API_KEY}"
+        region: "eastus"
+        voice: "en-US-JennyNeural"
+        style: "friendly"
+        rate: "0%"
+        pitch: "0%"
+        volume: "0%"
+        output_format: "riff-16khz-16bit-mono-pcm"
+        ssml_enabled: true
+      connection_pool:
+        max_connections: 10
+        idle_timeout: 300
+      retry:
+        max_retries: 3
+        base_delay: 1
+        max_delay: 30
+
+  # Audio caching
+  cache:
+    enabled: true
+    redis:
+      key_prefix: "tts:cache:"
+      ttl: 2592000  # 30 days
+      max_size: 10000
+    warming:
+      enabled: true
+      prompts:
+        - "Hello, how can I help you today?"
+        - "Thank you for calling."
+        - "Please hold while I transfer you."
+        - "Goodbye, have a great day!"
+      interval: 3600
+
+  # Latency tracking
+  latency:
+    enabled: true
+    first_byte_target: 500
+    percentiles: [50, 95, 99]
+
+  # Fallback
+  fallback:
+    enabled: true
+    timeout: 5000
+    degradation_threshold: 0.8
+
+  # Voice catalog sync
+  voice_catalog:
+    enabled: true
+    sync_interval: 86400
+
+# Campaign Configuration
+campaign:
+  # Campaign Manager settings
+  manager:
+    # gRPC server
+    grpc:
+      listen: "0.0.0.0:9092"
+      max_recv_msg_size: 4194304
+      max_send_msg_size: 4194304
+    
+    # Contact list loading
+    contact_loader:
+      batch_size: 1000
+      concurrency: 10
+      timeout: 300
+    
+    # DNC/Consent checking
+    compliance:
+      dnc_check_enabled: true
+      consent_check_enabled: true
+      cache_ttl: 3600
+      cache_size: 100000
+    
+    # Calling window enforcement
+    calling_window:
+      enabled: true
+      default_start: "08:00"
+      default_end: "21:00"
+      timezone_db: "tzdata"
+    
+    # Campaign scheduling
+    scheduling:
+      enabled: true
+      rrule_support: true
+      check_interval: 60
+
+  # Predictive Dialer settings
+  predictive_dialer:
+    enabled: true
+    erlang_c:
+      target_utilization: 0.85
+      safety_margin: 0.03
+      max_abandon_rate: 0.03
+    metrics:
+      enabled: true
+      interval: 10
+      emit_to_prometheus: true
+    
+    # AMD integration
+    amd:
+      enabled: true
+      human_threshold: 0.5
+      voicemail_threshold: 0.7
+      silence_duration: 1.5
+      beep_detection: true
+      speech_detection: true
+    
+    # Retry scheduling
+    retry:
+      max_attempts: 3
+      base_delay: 300
+      max_delay: 3600
+      exponential_backoff: true
+
+# Transfer Configuration
+transfer:
+  # Transfer Manager settings
+  manager:
+    # gRPC server
+    grpc:
+      listen: "0.0.0.0:9093"
+      max_recv_msg_size: 4194304
+      max_send_msg_size: 4194304
+    
+    # Queue integration
+    queue:
+      type: "external_acd"
+      endpoint: "http://acd.example.com/api"
+      api_key: "${ACD_API_KEY}"
+      poll_interval: 5
+      timeout: 30
+    
+    # Agent availability
+    agent_polling:
+      enabled: true
+      interval: 10
+      timeout: 5
+    
+    # SIP REFER settings
+    sip_refer:
+      enabled: true
+      replaces_header: true
+      attended_transfer: true
+      timeout: 300
+    
+    # Context passing
+    context_headers:
+      enabled: true
+      header_prefix: "X-Conversation-"
+      include_transcript: true
+      include_extracted_data: true
+      include_sentiment: true
+
+  # Transfer state machine
+  state_machine:
+    queued_timeout: 300
+    ringing_timeout: 60
+    connected_timeout: 0  # No timeout when connected
+    fallback:
+      enabled: true
+      voicemail_enabled: true
+      callback_enabled: true
+      callback_delay: 300
+
+  # Priority queuing
+  priority_queuing:
+    enabled: true
+    levels: 5
+    default_priority: 3
+
+  # Analytics
+  analytics:
+    enabled: true
+    metrics:
+      - success_rate
+      - avg_wait_time
+      - abandonment_rate
+    interval: 60
+
+# Storage Configuration
+storage:
+  # PostgreSQL settings
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "ai_telephony"
+    username: "postgres"
+    password: "${POSTGRES_PASSWORD}"
+    ssl_mode: "require"
+    max_connections: 100
+    max_idle_connections: 10
+    connection_timeout: 30
+    statement_timeout: 60000
+    
+    # Partitioning
+    partitioning:
+      enabled: true
+      strategy: "monthly"
+      partition_key: "tenant_id"
+    
+    # Tables
+    tables:
+      call_records: "call_records"
+      dnc_entries: "dnc_entries"
+      consent_records: "consent_records"
+      campaigns: "campaigns"
+      contacts: "contacts"
+
+  # S3/MinIO settings
+  s3:
+    endpoint: "http://localhost:9000"
+    access_key: "${MINIO_ACCESS_KEY}"
+    secret_key: "${MINIO_SECRET_KEY}"
+    bucket: "ai-telephony-recordings"
+    region: "us-east-1"
+    use_ssl: false
+    force_path_style: true
+    
+    # Recording settings
+    recordings:
+      enabled: true
+      format: "wav"
+      sample_rate: 16000
+      channels: 2
+      compression: "none"
+    
+    # Transcript settings
+    transcripts:
+      enabled: true
+      format: "json"
+      compression: "gzip"
+
+  # Redis settings
+  redis:
+    host: "localhost"
+    port: 6379
+    password: "${REDIS_PASSWORD}"
+    database: 0
+    max_connections: 100
+    min_idle_connections: 10
+    connection_timeout: 5
+    read_timeout: 3
+    write_timeout: 3
+    
+    # Session settings
+    session:
+      ttl: 3600
+      prefix: "session:"
+    
+    # Rate limiting
+    rate_limit:
+      enabled: true
+      default_limit: 100
+      default_window: 60
+
+# Observability Configuration
+observability:
+  # Logging
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"
+    trace_id_propagation: true
+    service_name: "ai-telephony-platform"
+    
+    # Loki aggregation
+    loki:
+      enabled: true
+      endpoint: "http://loki:3100/loki/api/v1/push"
+      batch_size: 100
+      batch_timeout: 5
+      retention: "30d"
+      labels:
+        environment: "production"
+        cluster: "primary"
+
+  # Metrics
+  metrics:
+    enabled: true
+    prometheus:
+      enabled: true
+      listen: "0.0.0.0:9090"
+      path: "/metrics"
+      namespace: "ai_telephony"
+      subsystem: ""
+    
+    # Metric definitions
+    call_latency:
+      enabled: true
+      buckets: [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+      labels: ["provider", "operation", "tenant"]
+    
+    concurrent_calls:
+      enabled: true
+      labels: ["service", "tenant"]
+    
+    error_rates:
+      enabled: true
+      labels: ["service", "error_type", "tenant"]
+    
+    circuit_breaker:
+      enabled: true
+      labels: ["provider", "service", "state"]
+    
+    campaign_metrics:
+      enabled: true
+      labels: ["campaign", "status", "tenant"]
+    
+    media_quality:
+      enabled: true
+      labels: ["codec", "direction", "tenant"]
+      jitter_buckets: [0, 10, 30, 50, 100, 200]
+      loss_buckets: [0, 0.01, 0.05, 0.1, 0.25, 0.5]
+      mos_buckets: [1.0, 2.0, 3.0, 4.0, 4.5, 5.0]
+
+  # Tracing
+  tracing:
+    enabled: true
+    otel:
+      service_name: "ai-telephony-platform"
+      exporter:
+        type: "otlp"
+        endpoint: "http://tempo:4317"
+        insecure: true
+        headers: {}
+      sampler:
+        type: "traceidratio"
+        ratio: 1.0  # 100% sampling for calls
+      propagators:
+        - "tracecontext"
+        - "baggage"
+      span_attributes:
+        call_id: true
+        tenant_id: true
+        provider: true
+        model: true
+      resource_attributes:
+        "service-name": "ai-telephony-platform"
+        "service-version": "1.0.0"
+        "deployment-environment": "production"
+
+  # Grafana dashboards
+  grafana:
+    enabled: true
+    dashboards:
+      - name: "real-time-call-volume"
+        title: "Real-time Call Volume"
+        refresh: "10s"
+      - name: "latency-heatmaps"
+        title: "Latency Heatmaps"
+        refresh: "30s"
+      - name: "provider-health"
+        title: "Provider Health"
+        refresh: "60s"
+      - name: "campaign-funnel"
+        title: "Campaign Funnel"
+        refresh: "60s"
+      - name: "transfer-success-rates"
+        title: "Transfer Success Rates"
+        refresh: "60s"
+      - name: "compliance-alerts"
+        title: "Compliance Alerts"
+        refresh: "300s"
+    
+    # Alerting
+    alerting:
+      enabled: true
+      pagerduty:
+        enabled: true
+        integration_key: "${PAGERDUTY_INTEGRATION_KEY}"
+        severity: "critical"
+      rules:
+        - name: "high-error-rate"
+          expr: "rate(ai_telephony_errors_total[5m]) > 0.1"
+          for: "2m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "High error rate detected"
+        - name: "stt-degradation"
+          expr: "ai_telephony_stt_latency_p95 > 2.0"
+          for: "5m"
+          labels:
+            severity: "warning"
+          annotations:
+            summary: "STT latency degradation"
+        - name: "trunk-failure"
+          expr: "ai_telephony_sip_trunk_healthy == 0"
+          for: "1m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "SIP trunk failure detected"
+        - name: "dnc-violation"
+          expr: "increase(ai_telephony_dnc_violations_total[1h]) > 0"
+          for: "0m"
+          labels:
+            severity: "critical"
+          annotations:
+            summary: "DNC violation detected"

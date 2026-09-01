@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package telephony.v1;
+
+option go_package = "ai-telephony-platform/pkg/api/telephony/v1;telephonyv1";
+
+// Media Proxy Service
+service MediaProxy {
+  // StartMediaSession initiates a new RTP/WebRTC session
+  rpc StartMediaSession(StartMediaRequest) returns (StartMediaResponse);
+  
+  // StopMediaSession ends an active media session
+  rpc StopMediaSession(StopMediaRequest) returns (StopMediaResponse);
+  
+  // GetMetrics returns real-time MOS, jitter, and packet loss
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+}
+
+message StartMediaRequest {
+  string call_id = 1;
+  string codec = 2; // e.g. PCMU, PCMA, opus, G722
+  int32 sample_rate = 3;
+}
+
+message StartMediaResponse {
+  string session_id = 1;
+  int32 local_rtp_port = 2;
+}
+
+message StopMediaRequest {
+  string session_id = 1;
+}
+
+message StopMediaResponse {
+  bool success = 1;
+}
+
+message GetMetricsRequest {
+  string session_id = 1;
+}
+
+message GetMetricsResponse {
+  float mos = 1;
+  float jitter_ms = 2;
+  float packet_loss_percent = 3;
+}
+
+// AI Orchestrator Service
+service AIOrchestrator {
+  // ProcessCall starts the AI conversational loop for a given media session
+  rpc ProcessCall(ProcessCallRequest) returns (ProcessCallResponse);
+  
+  // EndCall signals the orchestrator to wrap up the conversation
+  rpc EndCall(EndCallRequest) returns (EndCallResponse);
+}
+
+message ProcessCallRequest {
+  string call_id = 1;
+  string media_session_id = 2;
+  string initial_prompt = 3;
+  string stt_provider = 4;
+  string llm_provider = 5;
+  string tts_provider = 6;
+}
+
+message ProcessCallResponse {
+  string orchestrator_session_id = 1;
+  bool accepted = 2;
+}
+
+message EndCallRequest {
+  string orchestrator_session_id = 1;
+}
+
+message EndCallResponse {
+  string transcript_summary = 1;
+}
+
+// Campaign Manager Service
+service CampaignManager {
+  // StartCampaign initiates dialing for a batch of contacts
+  rpc StartCampaign(StartCampaignRequest) returns (StartCampaignResponse);
+  
+  // StopCampaign halts an active campaign
+  rpc StopCampaign(StopCampaignRequest) returns (StopCampaignResponse);
+}
+
+message StartCampaignRequest {
+  string campaign_id = 1;
+  repeated Contact contacts = 2;
+  int32 target_abandonment_rate = 3;
+}
+
+message Contact {
+  string id = 1;
+  string phone_number = 2;
+  string timezone = 3; // e.g. America/New_York
+}
+
+message StartCampaignResponse {
+  bool success = 1;
+}
+
+message StopCampaignRequest {
+  string campaign_id = 1;
+}
+
+message StopCampaignResponse {
+  bool success = 1;
+}
+
+// Transfer Manager Service
+service TransferManager {
+  // InitiateTransfer begins a SIP REFER process to a live agent or queue
+  rpc InitiateTransfer(InitiateTransferRequest) returns (InitiateTransferResponse);
+}
+
+message InitiateTransferRequest {
+  string call_id = 1;
+  string target_sip_uri = 2; // e.g. sip:queue@cc.example.com
+  string transcript_context = 3; // Context to inject into SIP headers
+  string sentiment = 4;
+}
+
+message InitiateTransferResponse {
+  string transfer_id = 1;
+  bool accepted = 2;
+}

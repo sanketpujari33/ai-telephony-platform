@@ -1,0 +1,625 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI — User Web Dashboard API",
+    "version": "1.0.0",
+    "description": "Comprehensive REST and WebRTC API specifications powering the Next.js 14 User Portal (:3000)."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (:8080)"
+    },
+    {
+      "url": "https://api.nexora.ai",
+      "description": "Production Gateway"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "WebRTC Softphone Dialer",
+      "description": "In-browser voice calling and LiveKit token generation"
+    },
+    {
+      "name": "Autonomous Outbound Missions",
+      "description": "Delegate real-world calling tasks and track IVR progression"
+    },
+    {
+      "name": "AI Voice Personas",
+      "description": "Customize agent instructions, voice synthesizer, and tools"
+    },
+    {
+      "name": "Episodic Memory & Facts",
+      "description": "Manage personal memory vector store (pgvector)"
+    },
+    {
+      "name": "Minute Wallets & Billing",
+      "description": "Wallet auto-recharges and usage invoices"
+    },
+    {
+      "name": "Virtual DIDs & Settings",
+      "description": "Manage dedicated forwarding phone numbers"
+    }
+  ],
+  "paths": {
+    "/api/v1/calls/dispatch": {
+      "post": {
+        "tags": [
+          "WebRTC Softphone Dialer"
+        ],
+        "summary": "Initiate in-browser phone call",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchCallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Call dispatched"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/active": {
+      "get": {
+        "tags": [
+          "WebRTC Softphone Dialer"
+        ],
+        "summary": "List user active calls",
+        "responses": {
+          "200": {
+            "description": "Active calls list"
+          }
+        }
+      }
+    },
+    "/api/v1/missions": {
+      "post": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Schedule autonomous outbound mission (hiRobin Parity)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mission created"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "List user calling missions",
+        "responses": {
+          "200": {
+            "description": "Missions list"
+          }
+        }
+      }
+    },
+    "/api/v1/missions/{id}": {
+      "get": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Get mission status & IVR history",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mission status"
+          }
+        }
+      }
+    },
+    "/api/v1/missions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Cancel outbound mission",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mission cancelled"
+          }
+        }
+      }
+    },
+    "/api/v1/agents": {
+      "get": {
+        "tags": [
+          "AI Voice Personas"
+        ],
+        "summary": "List configured AI voice personas",
+        "responses": {
+          "200": {
+            "description": "Agents list"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/{id}": {
+      "get": {
+        "tags": [
+          "AI Voice Personas"
+        ],
+        "summary": "Get persona details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent profile"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/config": {
+      "post": {
+        "tags": [
+          "AI Voice Personas"
+        ],
+        "summary": "Update agent prompt & voice synthesizer",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "systemPrompt": {
+                    "type": "string"
+                  },
+                  "ttsVoice": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent updated"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/facts": {
+      "get": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "List personal episodic facts",
+        "responses": {
+          "200": {
+            "description": "Facts list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "Add personal fact with pgvector embedding",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fact stored"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/search": {
+      "post": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "Semantic memory search",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Memory search matches"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/wallet": {
+      "get": {
+        "tags": [
+          "Minute Wallets & Billing"
+        ],
+        "summary": "Check minute wallet balance and auto-recharge settings",
+        "responses": {
+          "200": {
+            "description": "Wallet balance"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/wallet/recharge": {
+      "post": {
+        "tags": [
+          "Minute Wallets & Billing"
+        ],
+        "summary": "Recharge minute wallet balance",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recharge successful"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices": {
+      "get": {
+        "tags": [
+          "Minute Wallets & Billing"
+        ],
+        "summary": "List billing invoices and per-call metering ledgers",
+        "responses": {
+          "200": {
+            "description": "Invoices list"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assigned": {
+      "get": {
+        "tags": [
+          "Virtual DIDs & Settings"
+        ],
+        "summary": "List virtual DIDs assigned to user",
+        "responses": {
+          "200": {
+            "description": "Assigned DIDs"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assign": {
+      "post": {
+        "tags": [
+          "Virtual DIDs & Settings"
+        ],
+        "summary": "Assign virtual DID for call forwarding",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDIDRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DID assigned"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/release": {
+      "post": {
+        "tags": [
+          "Virtual DIDs & Settings"
+        ],
+        "summary": "Release virtual DID",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "numberId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DID released"
+          }
+        }
+      }
+    }
+  }
+}

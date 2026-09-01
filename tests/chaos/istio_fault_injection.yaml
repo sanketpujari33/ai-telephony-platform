@@ -1,0 +1,48 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: stt-provider-chaos
+  namespace: ai-telephony
+spec:
+  hosts:
+  - api.deepgram.com # Target STT provider
+  http:
+  - fault:
+      delay:
+        percentage:
+          value: 30.0 # Inject a 5s delay into 30% of requests
+        fixedDelay: 5s
+    route:
+    - destination:
+        host: api.deepgram.com
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: llm-provider-chaos
+  namespace: ai-telephony
+spec:
+  hosts:
+  - api.openai.com # Target LLM provider
+  http:
+  - fault:
+      abort:
+        percentage:
+          value: 15.0 # Inject HTTP 503 errors into 15% of requests
+        httpStatus: 503
+    route:
+    - destination:
+        host: api.openai.com
+
+---
+# Chaos Bash Script for Media Proxy Pod Destruction (Manual Execution)
+# Run this during the k6 load test to verify SIP RTP reconnection logic.
+# 
+# #!/bin/bash
+# while true; do
+#   POD=$(kubectl get pods -n ai-telephony -l app=media-proxy -o jsonpath="{.items[0].metadata.name}")
+#   echo "Killing media proxy pod: $POD"
+#   kubectl delete pod $POD -n ai-telephony --grace-period=0 --force
+#   sleep 45
+# done

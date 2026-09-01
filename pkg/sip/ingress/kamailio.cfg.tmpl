@@ -1,0 +1,475 @@
+#!KAMAILIO
+
+# Kamailio Configuration Template for AI Telephony Platform
+# This template is rendered with actual values at startup
+
+# Global parameters
+# {{.GlobalParams}}
+
+# Modules
+# {{.Modules}}
+
+# Module parameters
+# {{.ModuleParams}}
+
+# Routing logic
+# {{.RoutingLogic}}
+
+# Event routes
+# {{.EventRoutes}}
+
+# Failure routes
+# {{.FailureRoutes}}
+
+# Branch routes
+# {{.BranchRoutes}}
+
+# Onreply routes
+# {{.OnreplyRoutes}}
+
+# Local routes
+# {{.LocalRoutes}}
+
+# ============================================================================
+# DEFAULT CONFIGURATION (used if template variables not provided)
+# ============================================================================
+
+# Global parameters
+# !ifndef GLOBAL_PARAMS
+# !define GLOBAL_PARAMS
+debug=3
+log_stderror=yes
+memdbg=5
+memlog=5
+fork=yes
+children=4
+disable_tcp=no
+disable_tls=no
+enable_tls=yes
+tcp_connection_lifetime=3605
+tcp_max_connections=2048
+tcp_max_msg_size=16777216
+dns_cache_enabled=yes
+dns_cache_flags=5
+dns_srv_lb=yes
+# !endif
+
+# Modules
+# !ifndef MODULES
+# !define MODULES
+loadmodule "mi_fifo.so"
+loadmodule "kex.so"
+loadmodule "corex.so"
+loadmodule "tm.so"
+loadmodule "sl.so"
+loadmodule "rr.so"
+loadmodule "maxfwd.so"
+loadmodule "usrloc.so"
+loadmodule "registrar.so"
+loadmodule "textops.so"
+loadmodule "siputils.so"
+loadmodule "xlog.so"
+loadmodule "sanity.so"
+loadmodule "ctl.so"
+loadmodule "cfg_rpc.so"
+loadmodule "acc.so"
+loadmodule "auth.so"
+loadmodule "auth_db.so"
+loadmodule "permissions.so"
+loadmodule "dialog.so"
+loadmodule "nathelper.so"
+loadmodule "sipcapture.so"
+loadmodule "tls.so"
+loadmodule "websocket.so"
+loadmodule "jsonrpcs.so"
+loadmodule "http_async_client.so"
+# !endif
+
+# Module parameters
+# !ifndef MODULE_PARAMS
+# !define MODULE_PARAMS
+# mi_fifo params
+modparam("mi_fifo", "fifo_name", "/var/run/kamailio/kamailio_fifo")
+
+# tm params
+modparam("tm", "failure_reply_mode", 3)
+modparam("tm", "fr_timer", 30000)
+modparam("tm", "fr_inv_timer", 120000)
+
+# rr params
+modparam("rr", "enable_full_lr", 1)
+modparam("rr", "append_fromtag", 1)
+
+# registrar params
+modparam("registrar", "method_filtering", 1)
+
+# acc params
+modparam("acc", "early_media", 1)
+modparam("acc", "report_ack", 1)
+modparam("acc", "report_cancels", 1)
+modparam("acc", "detect_direction", 1)
+modparam("acc", "log_flag", 1)
+modparam("acc", "log_missed_flag", 2)
+modparam("acc", "log_extra", "src_user=$fU;src_domain=$fd;dst_user=$rU;dst_domain=$rd")
+
+# dialog params
+modparam("dialog", "dlg_match_mode", 1)
+modparam("dialog", "timeout_avp", "$avp(i:dialog_timeout)")
+modparam("dialog", "default_timeout", 21600)
+
+# nathelper params
+modparam("nathelper", "natping_interval", 30)
+modparam("nathelper", "ping_nated_only", 1)
+modparam("nathelper", "sipping_bflag", 7)
+modparam("nathelper", "sipping_from", "sip:pinger@kamailio")
+
+# tls params
+modparam("tls", "config", "/etc/kamailio/tls.cfg")
+
+# websocket params
+modparam("websocket", "max_connections", 1000)
+
+# jsonrpcs params
+modparam("jsonrpcs", "pretty_format", 1)
+modparam("jsonrpcs", "fifo_name", "/var/run/kamailio/kamailio_fifo")
+
+# http_async_client params
+modparam("http_async_client", "workers", 4)
+modparam("http_async_client", "connect_timeout", 5)
+modparam("http_async_client", "send_timeout", 10)
+modparam("http_async_client", "recv_timeout", 30)
+# !endif
+
+# Routing logic
+# !ifndef ROUTING_LOGIC
+# !define ROUTING_LOGIC
+
+request_route {
+    # Per request initial checks
+    route(REQINIT);
+
+    # NAT detection
+    route(NATDETECT);
+
+    # CANCEL processing
+    if (is_method("CANCEL")) {
+        if (t_check_trans()) {
+            route(RELAY);
+        }
+        exit;
+    }
+
+    # Handle requests within SIP dialogs
+    route(WITHINDLG);
+
+    ### only initial requests (no To tag)
+
+    # Handle retransmissions
+    if (t_precheck_trans()) {
+        t_check_trans();
+        exit;
+    }
+    t_check_trans();
+
+    # Authentication
+    route(AUTH);
+
+    # Record routing for dialog forming requests
+    if (is_method("INVITE|SUBSCRIBE")) {
+        record_route();
+    }
+
+    # Account only INVITEs
+    if (is_method("INVITE")) {
+        setflag(1); # do accounting
+    }
+
+    # Dispatch to call router for INVITE
+    if (is_method("INVITE")) {
+        route(DISPATCH);
+    }
+
+    # Handle REGISTER
+    if (is_method("REGISTER")) {
+        route(REGISTRAR);
+    }
+
+    # Handle OPTIONS
+    if (is_method("OPTIONS")) {
+        route(OPTIONS);
+    }
+
+    # Handle other requests
+    route(RELAY);
+}
+
+# Wrapper for relaying requests
+route[RELAY] {
+    # Enable additional event routes for forwarded requests
+    if (is_method("INVITE|BYE|SUBSCRIBE|UPDATE")) {
+        t_on_failure("FAILURE_ROUTE");
+        t_on_branch("BRANCH_ROUTE");
+        t_on_reply("ONREPLY_ROUTE");
+    }
+
+    if (!t_relay()) {
+        sl_reply_error();
+    }
+    exit;
+}
+
+# Per SIP request initial checks
+route[REQINIT] {
+    if (!mf_process_maxfwd_header("10")) {
+        sl_send_reply("483", "Too Many Hops");
+        exit;
+    }
+
+    if (!sanity_check("1511", "7")) {
+        xlog("L_ERR", "Malformed SIP message from $si:$sp\n");
+        exit;
+    }
+
+    if (has_totag() && !loose_route()) {
+        sl_send_reply("404", "Not Found");
+        exit;
+    }
+
+    # Handle SIP over WebSocket
+    if ($proto == "ws" || $proto == "wss") {
+        setflag(10);
+    }
+}
+
+# NAT detection
+route[NATDETECT] {
+    if (is_method("REGISTER")) {
+        if (isflagset(5)) {
+            setbflag(6);
+        }
+        if (!save("location")) {
+            sl_reply_error();
+        }
+        exit;
+    }
+
+    if (!isflagset(10)) {
+        if (nat_uac_test("19")) {
+            if (is_method("INVITE") && !has_totag()) {
+                add_rr_param(";nat=yes");
+            }
+            setflag(5);
+        }
+    }
+}
+
+# Handle requests within SIP dialogs
+route[WITHINDLG] {
+    if (!has_totag()) {
+        return;
+    }
+
+    # Sequential request within a dialog should take the path determined by record-routing
+    if (loose_route()) {
+        route(DLGURI);
+        if (is_method("BYE")) {
+            setflag(1); # do accounting
+            setflag(2); # do accounting for BYE
+        } else if (is_method("ACK")) {
+            route(NATMANAGE);
+        } else if (is_method("NOTIFY")) {
+            # Add Record-Route for in-dialog NOTIFY as per RFC 6665
+            record_route();
+        }
+        route(RELAY);
+    } else {
+        if (is_method("SUBSCRIBE") && uri == myself) {
+            # In-dialog subscribe requests
+            route(RELAY);
+        }
+        if (is_method("NOTIFY")) {
+            # Notify requests
+            route(RELAY);
+        }
+    }
+    exit;
+}
+
+# Handle dialog URI
+route[DLGURI] {
+    if (!is_method("ACK")) {
+        if (dlgr_handle_request()) {
+            exit;
+        }
+    }
+}
+
+# Authentication
+route[AUTH] {
+    if (is_method("REGISTER")) {
+        # Authenticate REGISTER requests
+        if (!www_authorize("$td", "subscriber")) {
+            www_challenge("$td", "0");
+            exit;
+        }
+        if (!check_from()) {
+            sl_send_reply("403", "Forbidden");
+            exit;
+        }
+    }
+
+    if (is_method("INVITE") && !has_totag()) {
+        # Authenticate initial INVITE
+        if (!proxy_authorize("$td", "subscriber")) {
+            proxy_challenge("$td", "0");
+            exit;
+        }
+    }
+}
+
+# Dispatch to call router
+route[DISPATCH] {
+    # Extract call information
+    $var(call_id) = $ci;
+    $var(from_uri) = $fu;
+    $var(to_uri) = $tu;
+    $var(contact_uri) = $ct;
+    $var(sdp_body) = $rb;
+
+    # Call external call router via HTTP
+    $var(router_url) = "http://call-router:9090/route";
+    
+    # Prepare JSON payload
+    $var(payload) = '{"call_id":"' + $var(call_id) + '","from_uri":"' + $var(from_uri) + '","to_uri":"' + $var(to_uri) + '","contact_uri":"' + $var(contact_uri) + '","sdp":"' + escape_json($var(sdp_body)) + '"}';
+
+    # Make async HTTP request to call router
+    http_async_query($var(router_url), "POST", "application/json", $var(payload), "call_router_callback");
+    exit;
+}
+
+# Callback from call router
+route[call_router_callback] {
+    if ($http_rc != 200) {
+        xlog("L_ERR", "Call router returned error: $http_rc\n");
+        sl_send_reply("500", "Call Router Error");
+        exit;
+    }
+
+    # Parse response
+    $var(route_response) = $http_rb;
+    
+    # Extract media ports and orchestrator info from response
+    # This would be parsed from JSON in a real implementation
+    
+    # Forward to media proxy
+    route(RELAY);
+}
+
+# Registrar
+route[REGISTRAR] {
+    if (!save("location")) {
+        sl_reply_error();
+    }
+    exit;
+}
+
+# OPTIONS handling
+route[OPTIONS] {
+    if (uri == myself) {
+        sl_send_reply("200", "OK");
+        exit;
+    }
+    route(RELAY);
+}
+
+# NAT management
+route[NATMANAGE] {
+    if (isflagset(5)) {
+        if (is_method("INVITE")) {
+            fix_nated_contact();
+        }
+        if (is_method("ACK")) {
+            fix_nated_contact();
+        }
+    }
+}
+
+# ============================================================================
+# EVENT ROUTES
+# ============================================================================
+
+# Event route for dialog events
+event_route[dialog:start] {
+    xlog("L_INFO", "Dialog started: $dlg_callid\n");
+}
+
+event_route[dialog:end] {
+    xlog("L_INFO", "Dialog ended: $dlg_callid\n");
+}
+
+event_route[dialog:failed] {
+    xlog("L_ERR", "Dialog failed: $dlg_callid\n");
+}
+
+# ============================================================================
+# FAILURE ROUTES
+# ============================================================================
+
+failure_route[FAILURE_ROUTE] {
+    if (t_is_canceled()) {
+        exit;
+    }
+
+    # Uncomment the following lines if you want to block 3xx redirect responses
+    # if (t_check_status("3[0-9][0-9]")) {
+    #     exit;
+    # }
+
+    # Serial forking
+    if (t_check_status("408|481|487")) {
+        exit;
+    }
+
+    # Handle 5xx responses
+    if (t_check_status("5[0-9][0-9]")) {
+        xlog("L_ERR", "Server error: $rs $rr\n");
+    }
+
+    # Handle 4xx responses
+    if (t_check_status("4[0-9][0-9]")) {
+        xlog("L_WARN", "Client error: $rs $rr\n");
+    }
+}
+
+# ============================================================================
+# BRANCH ROUTES
+# ============================================================================
+
+branch_route[BRANCH_ROUTE] {
+    xlog("L_INFO", "New branch: $branch_idx to $ru\n");
+}
+
+# ============================================================================
+# ONREPLY ROUTES
+# ============================================================================
+
+onreply_route[ONREPLY_ROUTE] {
+    if (t_check_status("1[0-9][0-9]")) {
+        # Provisional response
+        if (isflagset(5)) {
+            fix_nated_contact();
+        }
+    }
+}
+
+# ============================================================================
+# LOCAL ROUTES
+# ============================================================================
+
+# Local route for handling local requests
+route[LOCAL] {
+    # Handle local requests
+    route(RELAY);
+}
+
+# !endif

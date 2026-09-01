@@ -1,0 +1,14 @@
+apiVersion: v2
+name: media-proxy
+description: Media Proxy Service for AI Telephony Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - media
+  - rtp
+  - webrtc
+  - mediasoup
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

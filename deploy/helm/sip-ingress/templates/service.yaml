@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sip-ingress.fullname" . }}
+  labels:
+    {{- include "sip-ingress.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.istio.sidecar.enabled }}
+    sidecar.istio.io/inject: "true"
+    {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: sip-udp
+      protocol: UDP
+      port: {{ index .Values.service.ports "sip-udp" }}
+      targetPort: sip-udp
+    - name: sip-tcp
+      protocol: TCP
+      port: {{ index .Values.service.ports "sip-tcp" }}
+      targetPort: sip-tcp
+    - name: sip-tls
+      protocol: TCP
+      port: {{ index .Values.service.ports "sip-tls" }}
+      targetPort: sip-tls
+    - name: sip-ws
+      protocol: TCP
+      port: {{ index .Values.service.ports "sip-ws" }}
+      targetPort: sip-ws
+    - name: sip-wss
+      protocol: TCP
+      port: {{ index .Values.service.ports "sip-wss" }}
+      targetPort: sip-wss
+    - name: grpc
+      protocol: TCP
+      port: {{ .Values.service.ports.grpc }}
+      targetPort: grpc
+
+  selector:
+    {{- include "sip-ingress.selectorLabels" . | nindent 4 }}
