@@ -1,0 +1,12 @@
+{{- if and .Values.istio.sidecar.enabled .Values.istio.destinationRule.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: {{ include "sip-ingress.fullname" . }}
+  labels:
+    {{- include "sip-ingress.labels" . | nindent 4 }}
+spec:
+  host: {{ include "sip-ingress.fullname" . }}
+  trafficPolicy:
+    {{- toYaml .Values.istio.destinationRule.trafficPolicy | nindent 4 }}
+{{- end }}

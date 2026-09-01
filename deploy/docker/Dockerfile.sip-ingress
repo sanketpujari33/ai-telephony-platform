@@ -1,0 +1,53 @@
+# Build stage
+FROM golang:1.26.4-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git make gcc musl-dev
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the binary
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -X main.version=${VERSION:-dev} -X main.commit=${COMMIT:-none} -X main.date=${DATE:-unknown}" \
+    -o /sip-ingress ./cmd/sip-ingress
+
+# Final stage
+FROM alpine:3.20
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Create non-root user
+RUN addgroup -g 1000 -S appgroup && \
+    adduser -u 1000 -S appuser -G appgroup
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /sip-ingress .
+
+# Copy config
+COPY config/platform.yaml ./config/
+
+# Change ownership
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+# Expose ports
+EXPOSE 5060/udp 5060/tcp 5061/tcp 5062/tcp 5063/tcp 9090/tcp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9090/health || exit 1
+
+# Run
+ENTRYPOINT ["./sip-ingress"]
+CMD ["-config", "/app/config/platform.yaml"]

@@ -1,0 +1,1611 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Nexora AI Telephony & Communication Platform — Master API",
+    "version": "1.0.0",
+    "description": "### Nexora AI Enterprise Telephony Operating System\nUnified API Catalog integrating **hiRobin** Autonomous Outbound Missions and **Equal AI** Inbound Live Screening with <18ms Whispers and <15ms Takeover.\n\n---\n#### Specialized Documentation Portals:\n* 👔 [Platform Admin Operations](/docs/admin)\n* 📱 [User Mobile Application](/docs/user-mobile)\n* 💻 [User Desktop Softphone](/docs/user-desktop)\n* 🌐 [User Web Dashboard](/docs/user-dashboard)\n* 🏢 [Enterprise & Governance](/docs/enterprise)\n",
+    "contact": {
+      "name": "Nexora Platform Engineering Team",
+      "email": "api@nexora.ai",
+      "url": "https://nexora.ai"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "Local API Gateway (:8080)"
+    },
+    {
+      "url": "https://api.nexora.ai",
+      "description": "Production API Gateway"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Provide JWT access token in header: `Bearer <token>`"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "Platform API Key for backend dispatching"
+      }
+    },
+    "schemas": {
+      "StandardResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "example": 200
+          },
+          "data": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Nexora AI Telephony"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                  },
+                  "environment": {
+                    "type": "string",
+                    "example": "development"
+                  }
+                }
+              },
+              "iceServers": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "carrierMmiCodes": {
+                "type": "object"
+              },
+              "features": {
+                "type": "object"
+              },
+              "endpoints": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "AssignDIDRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "slotIndex"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "usr_sanket_pixel"
+          },
+          "slotIndex": {
+            "type": "integer",
+            "enum": [
+              0,
+              1
+            ],
+            "example": 0
+          },
+          "preferredProvider": {
+            "type": "string",
+            "enum": [
+              "twilio",
+              "telnyx",
+              "plivo",
+              "livekit_sip",
+              "jio_ims",
+              "airtel_sip"
+            ],
+            "example": "twilio"
+          },
+          "countryCode": {
+            "type": "string",
+            "example": "IN"
+          }
+        }
+      },
+      "DispatchCallRequest": {
+        "type": "object",
+        "required": [
+          "to",
+          "agentId"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "example": "+919820188412"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_phone_default"
+          },
+          "tenantId": {
+            "type": "string",
+            "example": "tenant_default"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "InjectWhisperRequest": {
+        "type": "object",
+        "required": [
+          "promptText"
+        ],
+        "properties": {
+          "promptText": {
+            "type": "string",
+            "example": "Tell the caller delivery PIN is 8492"
+          },
+          "whisperType": {
+            "type": "string",
+            "enum": [
+              "preset_chip",
+              "custom_text"
+            ],
+            "example": "preset_chip"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "example": "hinglish"
+          }
+        }
+      },
+      "CreateMissionRequest": {
+        "type": "object",
+        "required": [
+          "targetPhoneNumber",
+          "goal"
+        ],
+        "properties": {
+          "missionType": {
+            "type": "string",
+            "example": "restaurant_reservation"
+          },
+          "targetPhoneNumber": {
+            "type": "string",
+            "example": "+918041234567"
+          },
+          "targetBusinessName": {
+            "type": "string",
+            "example": "Olive Bistro & Bar"
+          },
+          "goal": {
+            "type": "string",
+            "example": "Book table for 4 at 8 PM"
+          },
+          "constraints": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    },
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Universal Bootstrap",
+      "description": "Single-handshake client bootstrap & remote configuration"
+    },
+    {
+      "name": "Authentication & OTP",
+      "description": "User & Admin authentication, JWT sessions, Phone OTP"
+    },
+    {
+      "name": "Telephony & Virtual DIDs",
+      "description": "Dedicated forwarding number inventory, MMI shortcodes, carrier detection"
+    },
+    {
+      "name": "Live Call Screening & Barge-In",
+      "description": "Green Card live screening, <18ms whisper injection, <15ms takeover locks"
+    },
+    {
+      "name": "Autonomous Outbound Missions",
+      "description": "Temporal durable calling workflows, IVR/DTMF navigation"
+    },
+    {
+      "name": "AI Voice Agents & Personas",
+      "description": "Voice customization, prompt engineering, LiveKit WebRTC tokens"
+    },
+    {
+      "name": "Episodic Memory & Facts",
+      "description": "Personal memory vector store (pgvector) & semantic retrieval"
+    },
+    {
+      "name": "CRM & Contacts",
+      "description": "Address book, VIP whitelisting, custom greetings"
+    },
+    {
+      "name": "Spam Shield & Reputation",
+      "description": "TRAI 140/160 series detection, STIR/SHAKEN reputation scoring"
+    },
+    {
+      "name": "Billing & Minute Wallets",
+      "description": "Wallet recharges, usage metering, Stripe/Razorpay payment intents"
+    },
+    {
+      "name": "Platform Admin Operations",
+      "description": "Staff RBAC, Dynamic CMS, FAQs, Banners, Monitored Keywords, Dead Reports"
+    },
+    {
+      "name": "Support Chat Helpdesk",
+      "description": "AI Tier-1 Support Bot and live human helpdesk escalation"
+    },
+    {
+      "name": "Enterprise & Governance",
+      "description": "SAML 2.0 / Okta SSO, SCIM 2.0 provisioning, SOC 2 audit logs"
+    }
+  ],
+  "paths": {
+    "/api/v1/bootstrap": {
+      "get": {
+        "tags": [
+          "Universal Bootstrap"
+        ],
+        "summary": "Universal client bootstrap handshake",
+        "responses": {
+          "200": {
+            "description": "Bootstrap data loaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "Register new tenant user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "User login with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, returns JWT access and refresh tokens"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/otp/send": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "Send Phone OTP SMS for passwordless login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "example": "+919820188412"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP dispatched via SMS"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/otp/verify": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "Verify Phone OTP code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified, returns session tokens"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "Refresh JWT session access token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New JWT access token generated"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication & OTP"
+        ],
+        "summary": "Revoke user token session",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers": {
+      "get": {
+        "tags": [
+          "Telephony & Virtual DIDs"
+        ],
+        "summary": "List available virtual forwarding number inventory pool",
+        "responses": {
+          "200": {
+            "description": "List of virtual DIDs across Twilio, Telnyx, Plivo, LiveKit"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assign": {
+      "post": {
+        "tags": [
+          "Telephony & Virtual DIDs"
+        ],
+        "summary": "Assign user-dedicated separated virtual forwarding DID for SIM 0 / SIM 1",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDIDRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dedicated DID assigned with carrier activation MMI shortcode"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/release": {
+      "post": {
+        "tags": [
+          "Telephony & Virtual DIDs"
+        ],
+        "summary": "Release assigned virtual DID back to pool",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "numberId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DID released"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/numbers/assigned": {
+      "get": {
+        "tags": [
+          "Telephony & Virtual DIDs"
+        ],
+        "summary": "List virtual DIDs assigned to current user",
+        "responses": {
+          "200": {
+            "description": "List of assigned DIDs"
+          }
+        }
+      }
+    },
+    "/api/v1/telephony/sim-slots/detect": {
+      "post": {
+        "tags": [
+          "Telephony & Virtual DIDs"
+        ],
+        "summary": "Detect carrier profiles and generate conditional call forwarding dial strings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mccMnc": {
+                    "type": "string",
+                    "example": "40445"
+                  },
+                  "simSlot": {
+                    "type": "integer",
+                    "example": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Carrier detected with activation & deactivation MMI shortcodes"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/dispatch": {
+      "post": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Dispatch outbound AI phone call",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispatchCallRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Call queued and LiveKit WebRTC room provisioned"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/active": {
+      "get": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "List all active calls in progress",
+        "responses": {
+          "200": {
+            "description": "Active calls list"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}": {
+      "get": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Get single call session details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call session object"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/screening": {
+      "get": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Fetch live call screening state (\"Green Card\" UI)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active screening session with live diarized transcript"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/whisper": {
+      "post": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Inject in-call whisper guidance prompt (<18ms queue latency)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InjectWhisperRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Whisper prompt delivered to AI synthesis queue"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/takeover": {
+      "post": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Execute 1-tap live takeover barge-in (<15ms mutex lock)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Takeover lock acquired, AI muted, WebRTC mic bridged"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/route-voicemail": {
+      "post": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Route call to interactive AI voicemail drop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Routed to voicemail agent"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/transcript": {
+      "get": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Fetch call transcript segments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Diarized speaker transcript"
+          }
+        }
+      }
+    },
+    "/api/v1/calls/{id}/recording": {
+      "get": {
+        "tags": [
+          "Live Call Screening & Barge-In"
+        ],
+        "summary": "Retrieve presigned audio recording URL",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presigned S3 audio URL"
+          }
+        }
+      }
+    },
+    "/api/v1/missions": {
+      "post": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Create autonomous outbound calling mission (hiRobin Parity)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Autonomous mission submitted to Temporal"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "List all autonomous outbound missions",
+        "responses": {
+          "200": {
+            "description": "List of outbound missions"
+          }
+        }
+      }
+    },
+    "/api/v1/missions/{id}": {
+      "get": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Get real-time mission status, IVR history & audio snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mission execution status"
+          }
+        }
+      }
+    },
+    "/api/v1/missions/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Autonomous Outbound Missions"
+        ],
+        "summary": "Cancel running autonomous mission",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mission cancelled"
+          }
+        }
+      }
+    },
+    "/api/v1/agents": {
+      "get": {
+        "tags": [
+          "AI Voice Agents & Personas"
+        ],
+        "summary": "List available AI voice agents and personas",
+        "responses": {
+          "200": {
+            "description": "List of agent profiles"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/{id}": {
+      "get": {
+        "tags": [
+          "AI Voice Agents & Personas"
+        ],
+        "summary": "Get details of specific AI voice persona",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent profile details"
+          }
+        }
+      }
+    },
+    "/api/v1/agents/config": {
+      "post": {
+        "tags": [
+          "AI Voice Agents & Personas"
+        ],
+        "summary": "Update AI agent system prompt, voice model, and tool bindings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agentId": {
+                    "type": "string"
+                  },
+                  "systemPrompt": {
+                    "type": "string"
+                  },
+                  "ttsVoice": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent configuration saved"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/facts": {
+      "get": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "List personal episodic facts (gate codes, delivery PINs, preferences)",
+        "responses": {
+          "200": {
+            "description": "List of facts"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "Store new personal episodic fact with pgvector embedding",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Fact stored in vector memory"
+          }
+        }
+      }
+    },
+    "/api/v1/memory/search": {
+      "post": {
+        "tags": [
+          "Episodic Memory & Facts"
+        ],
+        "summary": "Search vector memory with semantic similarity query",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "example": "What is my gate code?"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Top semantic fact matches"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts": {
+      "get": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "List CRM contacts with search & filtering",
+        "responses": {
+          "200": {
+            "description": "List of contacts"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "Create new contact",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "isVip": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Contact created successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/vip": {
+      "get": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "List VIP whitelist contacts",
+        "responses": {
+          "200": {
+            "description": "VIP contacts list"
+          }
+        }
+      }
+    },
+    "/api/v1/contacts/{id}": {
+      "get": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "Get single contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact details"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "Update contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CRM & Contacts"
+        ],
+        "summary": "Delete contact",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact deleted"
+          }
+        }
+      }
+    },
+    "/api/v1/spam/check": {
+      "post": {
+        "tags": [
+          "Spam Shield & Reputation"
+        ],
+        "summary": "Check caller phone number against TRAI DND and STIR/SHAKEN reputation score",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phoneNumber": {
+                    "type": "string",
+                    "example": "+911401234567"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Spam probability score and TRAI classification"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/wallet": {
+      "get": {
+        "tags": [
+          "Billing & Minute Wallets"
+        ],
+        "summary": "Get current user minute wallet balance, plan & auto-recharge settings",
+        "responses": {
+          "200": {
+            "description": "Wallet status"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/wallet/recharge": {
+      "post": {
+        "tags": [
+          "Billing & Minute Wallets"
+        ],
+        "summary": "Top up minute wallet with payment intent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "example": 500
+                  },
+                  "currency": {
+                    "type": "string",
+                    "example": "INR"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recharge initiated"
+          }
+        }
+      }
+    },
+    "/api/v1/billing/invoices": {
+      "get": {
+        "tags": [
+          "Billing & Minute Wallets"
+        ],
+        "summary": "List billing invoices and per-call usage ledgers",
+        "responses": {
+          "200": {
+            "description": "Invoices list"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/intent": {
+      "post": {
+        "tags": [
+          "Billing & Minute Wallets"
+        ],
+        "summary": "Create Stripe / Razorpay payment intent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "stripe",
+                      "razorpay"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment intent created"
+          }
+        }
+      }
+    },
+    "/api/v1/content/{slug}": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "Fetch dynamic legal document by slug (Privacy Policy, Terms)",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "privacy-policy"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Content document markdown"
+          }
+        }
+      }
+    },
+    "/api/v1/content/faqs": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "Fetch platform FAQs list",
+        "responses": {
+          "200": {
+            "description": "List of published FAQs"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "List all tenant users with pagination & search",
+        "responses": {
+          "200": {
+            "description": "Users list"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "Create user with role assignment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banners": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "List promotional announcement banners",
+        "responses": {
+          "200": {
+            "description": "List of banners"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "Create promotional banner",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Banner created"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/keywords": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "List monitored speech compliance keywords",
+        "responses": {
+          "200": {
+            "description": "List of keywords"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "Add monitored speech keyword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keyword": {
+                    "type": "string"
+                  },
+                  "severity": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Keyword added"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/dead-reports": {
+      "get": {
+        "tags": [
+          "Platform Admin Operations"
+        ],
+        "summary": "List carrier dead call drop reports",
+        "responses": {
+          "200": {
+            "description": "List of dead call reports"
+          }
+        }
+      }
+    },
+    "/api/v1/support/chat/sessions": {
+      "post": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "Start AI Support Bot chat session (RAG-powered)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "initialQuery": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Support session initialized"
+          }
+        }
+      }
+    },
+    "/api/v1/support/chat/{id}/messages": {
+      "post": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "Send message in support chat",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI Bot or staff response"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/support/chats": {
+      "get": {
+        "tags": [
+          "Support Chat Helpdesk"
+        ],
+        "summary": "List escalated support chats requiring live staff assistance",
+        "responses": {
+          "200": {
+            "description": "Escalated chats list"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations": {
+      "post": {
+        "tags": [
+          "Enterprise & Governance"
+        ],
+        "summary": "Provision new enterprise organization tenant",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "seats": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Organization created"
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{id}/sso": {
+      "post": {
+        "tags": [
+          "Enterprise & Governance"
+        ],
+        "summary": "Configure SAML 2.0 / Okta Single Sign-On",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idpMetadataUrl": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSO configured"
+          }
+        }
+      }
+    },
+    "/api/v1/audit/logs": {
+      "get": {
+        "tags": [
+          "Enterprise & Governance"
+        ],
+        "summary": "Export immutable append-only SOC 2 audit logs",
+        "responses": {
+          "200": {
+            "description": "Audit logs records"
+          }
+        }
+      }
+    }
+  }
+}

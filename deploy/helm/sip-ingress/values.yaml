@@ -1,0 +1,288 @@
+# Default values for sip-ingress
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+
+image:
+  repository: ai-telephony-platform/sip-ingress
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+  # Istio sidecar injection
+  sidecar.istio.io/inject: "true"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  ports:
+    sip-udp: 5060
+    sip-tcp: 5060
+    sip-tls: 5061
+    sip-ws: 5062
+    sip-wss: 5063
+    grpc: 9090
+    metrics: 9090
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: sip-ingress.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - sip-ingress
+          topologyKey: kubernetes.io/hostname
+
+config:
+  platform:
+    sip:
+      ingress:
+        listen:
+          udp: "0.0.0.0:5060"
+          tcp: "0.0.0.0:5060"
+          tls: "0.0.0.0:5061"
+          ws: "0.0.0.0:5062"
+          wss: "0.0.0.0:5063"
+        tls:
+          enabled: true
+          cert_file: "/etc/kamailio/certs/sip.crt"
+          key_file: "/etc/kamailio/certs/sip.key"
+          ca_file: "/etc/kamailio/certs/ca.crt"
+          verify_client: false
+        workers: 4
+        max_requests_per_worker: 10000
+        trunks:
+          - name: "primary"
+            host: "sip.example.com"
+            port: 5060
+            transport: "udp"
+            username: ""
+            password: ""
+            realm: ""
+            priority: 1
+            weight: 100
+          - name: "backup"
+            host: "sip-backup.example.com"
+            port: 5060
+            transport: "udp"
+            username: ""
+            password: ""
+            realm: ""
+            priority: 2
+            weight: 50
+        dns_srv:
+          enabled: true
+          domain: "sip.example.com"
+          transport: "udp"
+        keepalive:
+          enabled: true
+          interval: 30
+          timeout: 5
+          retry_count: 3
+        rate_limit:
+          enabled: true
+          requests_per_second: 100
+          burst: 200
+      router:
+        grpc:
+          listen: "0.0.0.0:9090"
+          max_recv_msg_size: 4194304
+          max_send_msg_size: 4194304
+        tenant_lookup:
+          cache_ttl: 300
+          cache_size: 10000
+        media_ports:
+          start: 10000
+          end: 20000
+          per_call: 4
+
+secrets:
+  # These should be provided via external secret management
+  # Example structure:
+  # sip_trunk_primary_password: ""
+  # sip_trunk_backup_password: ""
+  # tls_cert: ""
+  # tls_key: ""
+  # tls_ca: ""
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 9090
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 9090
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 9090
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+        - podSelector:
+            matchLabels:
+              app: istio-ingressgateway
+      ports:
+        - protocol: UDP
+          port: 5060
+        - protocol: TCP
+          port: 5060
+        - protocol: TCP
+          port: 5061
+        - protocol: TCP
+          port: 5062
+        - protocol: TCP
+          port: 5063
+    - from:
+        - podSelector:
+            matchLabels:
+              app: call-router
+      ports:
+        - protocol: TCP
+          port: 9090
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+
+istio:
+  sidecar:
+    enabled: true
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  virtualService:
+    enabled: true
+    hosts:
+      - sip-ingress
+    gateways:
+      - istio-system/sip-gateway
+  destinationRule:
+    enabled: true
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 1000
+        http:
+          h2UpgradePolicy: UPGRADE
+          http1MaxPendingRequests: 1000
+          http2MaxRequests: 1000
+      loadBalancer:
+        simple: LEAST_REQUEST
+      outlierDetection:
+        consecutive5xxErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50

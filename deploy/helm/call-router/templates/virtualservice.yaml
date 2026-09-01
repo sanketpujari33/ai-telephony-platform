@@ -1,0 +1,26 @@
+{{- if and .Values.istio.sidecar.enabled .Values.istio.virtualService.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "call-router.fullname" . }}
+  labels:
+    {{- include "call-router.labels" . | nindent 4 }}
+spec:
+  hosts:
+    {{- toYaml .Values.istio.virtualService.hosts | nindent 4 }}
+  gateways:
+    {{- toYaml .Values.istio.virtualService.gateways | nindent 4 }}
+  http:
+    - match:
+        - port: 9090
+      route:
+        - destination:
+            host: {{ include "call-router.fullname" . }}
+            port:
+              number: 9090
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: connect-failure,refused-stream,unavailable,cancelled,retriable-status-codes
+      timeout: 10s
+{{- end }}

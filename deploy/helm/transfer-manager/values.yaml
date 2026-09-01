@@ -1,0 +1,221 @@
+# Default values for transfer-manager
+replicaCount: 3
+
+image:
+  repository: ai-telephony-platform/transfer-manager
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9093"
+  prometheus.io/path: "/metrics"
+  sidecar.istio.io/inject: "true"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  ports:
+    grpc: 9093
+    metrics: 9093
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - transfer-manager
+          topologyKey: kubernetes.io/hostname
+
+config:
+  platform:
+    transfer:
+      manager:
+        grpc:
+          listen: "0.0.0.0:9093"
+          max_recv_msg_size: 4194304
+          max_send_msg_size: 4194304
+        queue:
+          type: "external_acd"
+          endpoint: "http://acd.example.com/api"
+          api_key: "${ACD_API_KEY}"
+          poll_interval: 5
+          timeout: 30
+        agent_polling:
+          enabled: true
+          interval: 10
+          timeout: 5
+        sip_refer:
+          enabled: true
+          replaces_header: true
+          attended_transfer: true
+          timeout: 300
+        context_headers:
+          enabled: true
+          header_prefix: "X-Conversation-"
+          include_transcript: true
+          include_extracted_data: true
+          include_sentiment: true
+      state_machine:
+        queued_timeout: 300
+        ringing_timeout: 60
+        connected_timeout: 0
+        fallback:
+          enabled: true
+          voicemail_enabled: true
+          callback_enabled: true
+          callback_delay: 300
+      priority_queuing:
+        enabled: true
+        levels: 5
+        default_priority: 3
+      analytics:
+        enabled: true
+        metrics:
+          - success_rate
+          - avg_wait_time
+          - abandonment_rate
+        interval: 60
+
+secrets: {}
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 9093
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 9093
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 9093
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: sip-ingress
+      ports:
+        - protocol: TCP
+          port: 9093
+    - from:
+        - podSelector:
+            matchLabels:
+              app: orchestrator
+      ports:
+        - protocol: TCP
+          port: 9093
+
+istio:
+  sidecar:
+    enabled: true
+  destinationRule:
+    enabled: true
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 1000
+        http:
+          h2UpgradePolicy: UPGRADE
+          http1MaxPendingRequests: 1000
+          http2MaxRequests: 1000
+      loadBalancer:
+        simple: LEAST_REQUEST
+      outlierDetection:
+        consecutive5xxErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+  virtualService:
+    enabled: true
+    hosts:
+      - "transfer-manager"
+    gateways:
+      - "mesh-gateway"
